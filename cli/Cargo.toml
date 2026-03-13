@@ -1,0 +1,9 @@
+[package]
+name = "lecoo-ctrl"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ipc = { path = "../ipc" }
+clap = { version = "4.6", features = ["derive"] }
+anyhow = "1.0"
