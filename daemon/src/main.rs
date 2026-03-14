@@ -26,6 +26,8 @@ fn do_work(req: &IpcRequest) -> IpcResponse {
 
         IpcRequest::GetTemperatures => handlers::get_temperatures(ec),
 
+        IpcRequest::GetChargeLimit => handlers::get_charge_limit(ec),
+
         // SETTERS:
         IpcRequest::SetPowerProfile(profile) => handlers::set_power_profile(ec, profile),
 

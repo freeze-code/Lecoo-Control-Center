@@ -24,6 +24,9 @@ pub enum IpcRequest {
     /// Get system temperatures
     GetTemperatures,
 
+    /// Get the current battery charge limit
+    GetChargeLimit,
+
     /// Apply a new power profile (Silent/Default/Performance)
     SetPowerProfile(PowerProfile),
 
@@ -57,6 +60,9 @@ pub enum IpcResponse {
 
     /// Temperature readings for CPU and System
     Temp(u8, u8),
+
+    /// Current battery charge limit (min/max percentages)
+    ChargeLimit(u8, u8),
 
     /// Error message if something went wrong
     Error(String),

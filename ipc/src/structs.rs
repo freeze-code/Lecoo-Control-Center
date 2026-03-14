@@ -35,11 +35,12 @@ pub enum FanIndex {
 /// Represents battery charge limit profiles (FlexiCharger)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode)]
 pub enum ChargeLimit {
-    FullCapacity,       // Charges to 100%
-    Balanced,           // Charges to ~80%
-    MaximumLifespan,    // Charges to ~60%
-    ServerMode,         // Charges to ~35%
-    // Custom(u8, u8),  // TODO: too dangerous, I think?
+    FullCapacity,       // 100%
+    HighCapacity,       // 95%
+    Balanced,           // 80%
+    MaximumLifespan,    // 60%
+    DeskMode,           // 40%
+    // Custom(u8),  // TODO: too dangerous, I think?
 }
 
 /// Represents the LED Ring behavior
