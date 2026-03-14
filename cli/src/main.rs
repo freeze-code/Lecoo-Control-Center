@@ -48,7 +48,7 @@ enum Commands {
     /// Set keyboard backlight level (0-3)
     Kbd {
         #[arg(value_parser = clap::value_parser!(u8).range(0..=3))]
-        level: u8,
+        level: Option<u8>,
     },
 
     /// Control rear LED ring (e.g., `led auto`, `led custom 255`)
@@ -159,15 +159,18 @@ fn main() -> anyhow::Result<()> {
             }
         }
 
-        Commands::Kbd { level } => {
-            let lvl = match level {
-                0 => KeyboardBacklightLevel::Off,
-                1 => KeyboardBacklightLevel::Low,
-                2 => KeyboardBacklightLevel::Medium,
-                _ => KeyboardBacklightLevel::High,
-            };
-            IpcRequest::SetKeyboardBacklight(lvl)
-        }
+        Commands::Kbd { level } => match level {
+            Some(l) => {
+                let lvl = match l {
+                    0 => KeyboardBacklightLevel::Off,
+                    1 => KeyboardBacklightLevel::Low,
+                    2 => KeyboardBacklightLevel::Medium,
+                    _ => KeyboardBacklightLevel::High,
+                };
+                IpcRequest::SetKeyboardBacklight(lvl)
+            }
+            None => IpcRequest::GetKeyboardBacklight,
+        },
 
         Commands::Led { action } => {
             let led_m = match action {
@@ -198,6 +201,11 @@ fn main() -> anyhow::Result<()> {
             println!("🌡️ Temperatures:");
             println!("   CPU: {} °C", cpu);
             println!("   System: {} °C", system);
+        }
+
+        IpcResponse::KeyboardBacklight(level) => {
+            println!("💡 Keyboard Backlight:");
+            println!("   Level: {}", level);
         }
 
         IpcResponse::ChargeLimit(min, max) => {
