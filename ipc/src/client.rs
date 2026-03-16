@@ -5,6 +5,7 @@ use crate::{IpcConnection, get_socket_name};
 
 pub struct IpcClient {
     conn: IpcConnection,
+    pub daemon_version: (u8, u8),
 }
 
 impl IpcClient {
@@ -20,12 +21,14 @@ impl IpcClient {
 
         let mut resp = [0u8; 5];
         stream.read_exact(&mut resp)?;
+        let daemon_major_ver = resp[3];
+        let daemon_minor_ver = resp[4];
 
         if &resp[0..3] == b"ERR" {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::ConnectionRefused,
                 format!("Daemon rejected connection: Version mismatch! Daemon is v{}.{}, Client is v{}.{}.{}. Please update.",
-                    resp[3], resp[4],
+                    daemon_major_ver, daemon_minor_ver,
                     crate::IPC_PROTOCOL_VERSION[0], crate::IPC_PROTOCOL_VERSION[1], crate::IPC_PROTOCOL_VERSION[2]
                 )
             ));
@@ -35,6 +38,7 @@ impl IpcClient {
 
         Ok(Self {
             conn: IpcConnection { stream },
+            daemon_version: (daemon_major_ver, daemon_minor_ver)
         })
     }
 

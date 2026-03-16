@@ -138,7 +138,7 @@ impl IpcConnection {
             let n = self.stream.read(&mut len_bytes[bytes_read..])?;
             if n == 0 {
                 if bytes_read == 0 {
-                    return Err(io::Error::new(io::ErrorKind::ConnectionReset, "Client disconnected cleanly"));
+                    return Err(io::Error::new(io::ErrorKind::ConnectionReset, "Connection reset by peer"));
                 } else {
                     return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "Connection dropped while reading"));
                 }
