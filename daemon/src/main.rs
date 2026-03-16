@@ -117,17 +117,27 @@ fn main() -> Result<()> {
         match server.accept() {
             Ok(mut conn) => {
                 thread::spawn(move || {
+                    if let Err(e) = conn.accept_handshake() {
+                        log::error!("Handshake rejected: {}", e);
+                        return;
+                    }
+
                     loop {
                         match conn.recv::<IpcRequest>() {
                             Ok(req) => {
                                 let res = do_work(&req);
 
                                 if let Err(e) = conn.send(&res) {
-                                    eprintln!("Error sending response: {}", e);
+                                    log::error!("Error sending response: {}", e);
                                     break;
                                 }
                             }
-                            Err(_) => break,
+                            Err(err) => {
+                                if err.kind() != std::io::ErrorKind::ConnectionReset {
+                                    log::error!("IPC recv error: {}", err);
+                                }
+                                break;
+                            },
                         }
                     }
                 });
