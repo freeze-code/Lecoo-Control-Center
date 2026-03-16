@@ -1,4 +1,5 @@
 use std::fs::create_dir_all;
+use std::panic;
 use std::path::Path;
 use std::sync::{OnceLock, mpsc::Sender};
 use std::time::Duration;
@@ -27,7 +28,6 @@ pub fn run_as_service(tx: Sender<InternalEvent>) -> Result<(), windows_service::
 }
 
 fn my_service_main(_arguments: Vec<std::ffi::OsString>) {
-    init_logger();
     info!("Starting {}...", SERVICE_NAME);
     let tx = EVENT_SENDER.get().expect("TX not initialized");
     let (tx_to_stop, rx_to_stop) = std::sync::mpsc::channel();
@@ -119,43 +119,24 @@ pub fn init_logger() {
         LevelFilter::Info,
         Config::default(),
         writer
-    ).expect("Failed to initialize logger");
+    ).unwrap_or_else(|err| log::error!("Something try init logger again. {:?}", err));
+
+    panic::set_hook(Box::new(|panic_info| {
+        let location = panic_info.location().unwrap();
+
+        let msg = match panic_info.payload().downcast_ref::<&'static str>() {
+            Some(s) => *s,
+            None => match panic_info.payload().downcast_ref::<String>() {
+                Some(s) => &s[..],
+                None => "Unknown panic message",
+            },
+        };
+
+        log::error!(
+            "CRITICAL PANIC in file '{}' at line {}: {}",
+            location.file(),
+            location.line(),
+            msg
+        );
+    }));
 }
-
-
-// pub fn install_service() -> windows_service::Result<()> {
-//     // 1. Подключаемся к менеджеру служб Windows (Service Control Manager)
-//     // Требуются права Администратора!
-//     let manager_access = ServiceManagerAccess::CONNECT | ServiceManagerAccess::CREATE_SERVICE;
-//     let service_manager = ServiceManager::local_computer(None::<&str>, manager_access)?;
-
-//     // 2. Получаем полный путь к нашему текущему .exe файлу
-//     let exe_path = env::current_exe().expect("Failed to get executable path");
-
-//     // 3. Формируем базовую информацию о службе
-//     let service_info = ServiceInfo {
-//         name: OsString::from(SERVICE_NAME),                 // Внутреннее имя службы
-//         display_name: OsString::from(SERVICE_DISPLAY_NAME), // Короткое имя (колонка "Имя" в диспетчере)
-//         service_type: ServiceType::OWN_PROCESS,
-//         start_type: ServiceStartType::AutoStart,            // Автозапуск вместе с Windows
-//         error_control: ServiceErrorControl::Normal,
-//         executable_path: exe_path,                          // Путь к нашему бинарнику
-//         launch_arguments: vec![],                           // Можно добавить аргументы, если нужно
-//         dependencies: vec![],                               // Зависимости (например, если нужна сеть)
-//         account_name: None,                                 // None означает запуск от системного аккаунта NT AUTHORITY\SYSTEM
-//         account_password: None,
-//     };
-
-//     // 4. Создаем службу в системе.
-//     // Обязательно запрашиваем право CHANGE_CONFIG, чтобы сразу после создания добавить длинное описание.
-//     let service = service_manager.create_service(&service_info, ServiceAccess::CHANGE_CONFIG)?;
-
-//     // 5. Устанавливаем длинное описание (колонка "Описание" в диспетчере служб)
-//     service.set_description(SERVICE_LONG_DESCRIPTION)?;
-
-//     // Опционально: можно сразу настроить перезапуск службы при падении
-//     // service.set_failure_actions_on_non_crash_failures(true)?;
-
-//     println!("Service '{}' successfully installed!", SERVICE_NAME);
-//     Ok(())
-// }
