@@ -28,6 +28,17 @@ pub enum KeyboardBacklightLevel {
     High = 0x03,
 }
 
+impl std::fmt::Display for KeyboardBacklightLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KeyboardBacklightLevel::Off => write!(f, "Off"),
+            KeyboardBacklightLevel::Low => write!(f, "Low"),
+            KeyboardBacklightLevel::Medium => write!(f, "Medium"),
+            KeyboardBacklightLevel::High => write!(f, "High"),
+        }
+    }
+}
+
 /// Represents the fan control mode
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode)]
 pub enum FanMode {

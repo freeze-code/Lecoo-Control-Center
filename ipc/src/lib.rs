@@ -74,7 +74,7 @@ pub enum IpcResponse {
     ChargeLimit(u8, u8),
 
     /// Current keyboard backlight brightness
-    KeyboardBacklight(u8),
+    KeyboardBacklight(KeyboardBacklightLevel),
 
     /// Current power profile
     PowerLimit(PowerProfile),

@@ -4,8 +4,14 @@ use super::EcDevice;
 
 const KEYBOARD_BACKLIGHT_REG: u16 = 0x0F05;
 
-pub fn read_keyboard_backlight(ec: &EcDevice) -> Result<u8> {
-    ec.read_reg(KEYBOARD_BACKLIGHT_REG)
+pub fn read_keyboard_backlight(ec: &EcDevice) -> Result<KeyboardBacklightLevel> {
+    match ec.read_reg(KEYBOARD_BACKLIGHT_REG)? {
+        0x00 => Ok(KeyboardBacklightLevel::Off),
+        0x01 => Ok(KeyboardBacklightLevel::Low),
+        0x02 => Ok(KeyboardBacklightLevel::Medium),
+        0x03 => Ok(KeyboardBacklightLevel::High),
+        v => Err(anyhow::anyhow!("Invalid keyboard backlight level: {:#04x}", v)),
+    }
 }
 
 pub fn apply_keyboard_backlight(ec: &EcDevice, level: &KeyboardBacklightLevel) -> Result<()> {
