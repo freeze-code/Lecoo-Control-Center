@@ -74,8 +74,8 @@ pub enum FanMode {
 /// Identifies the specific fan
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode)]
 pub enum FanIndex {
-    Cpu = 0x4B,     // todo: ram-address to const
-    Gpu = 0x4D,     // todo: ram-address to const
+    Cpu = 0x4B,
+    Gpu = 0x4D,
 }
 
 /// Represents battery charge limit profiles (FlexiCharger)

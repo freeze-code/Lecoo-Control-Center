@@ -88,5 +88,3 @@ pub fn apply_led_mode(ec: &EcDevice, mode: &PowerLedMode) -> Result<()> {
 
     Ok(())
 }
-
-// TODO: blinking: keyboard also start blinking!!! its a bug

@@ -1,6 +1,6 @@
-use ipc::{ChargeLimit, CurrentSettings, FanIndex, FanMode, IpcRequest, IpcResponse, KeyboardBacklightLevel, PowerLedMode, PowerProfile};
-use anyhow::{Result, anyhow};
-use crate::ec::{self, EcDevice};
+use ipc::{ChargeLimit, CurrentSettings, DaemonCommand, DaemonResponse, FanIndex, FanMode, IpcRequest, IpcResponse, KeyboardBacklightLevel, PowerLedMode, PowerProfile};
+use anyhow::{Context, Result, anyhow};
+use crate::{ec::{self, EcDevice}, telemetry};
 
 #[cfg(windows)]
 const STATE_PATH: &str = "C:\\ProgramData\\LecooControl\\daemon_state.bin";
@@ -8,7 +8,7 @@ const STATE_PATH: &str = "C:\\ProgramData\\LecooControl\\daemon_state.bin";
 const STATE_PATH: &str = "/var/lib/lecoo-control/daemon_state.bin";
 
 pub trait DaemonState: Sized {
-    fn load() -> Option<Self>;
+    fn load() -> Result<Self>;
     fn load_or_default() -> Self;
     fn save(&self) -> Result<()> ;
     fn restore_state(&self, ec: &EcDevice) -> Result<()>;
@@ -16,7 +16,7 @@ pub trait DaemonState: Sized {
 
 impl DaemonState for CurrentSettings {
     fn save(&self) -> Result<()> {
-        let dir = std::path::Path::new(STATE_PATH).parent().unwrap();
+        let dir = std::path::Path::new(STATE_PATH).parent().context("Invalid state path")?;
         std::fs::create_dir_all(dir)?;
 
         let file = std::fs::File::create(STATE_PATH)?;
@@ -26,16 +26,19 @@ impl DaemonState for CurrentSettings {
         Ok(())
     }
 
-    fn load() -> Option<Self> {
-        let file = std::fs::File::open(STATE_PATH).ok()?;
+    fn load() -> Result<Self> {
+        if !std::fs::exists(STATE_PATH).context("Cannot get access to state file")? {
+            return Ok(Self::default());
+        }
+
+        let file = std::fs::File::open(STATE_PATH).context("Failed to open state file")?;
         let mut reader = std::io::BufReader::new(file);
 
-        // bincode::decode_from_std_read(&mut reader, bincode::config::standard()).ok()
-        Some(bincode::decode_from_std_read::<CurrentSettings, _, _>(&mut reader, bincode::config::standard()).expect("cannot decode!"))
+        bincode::decode_from_std_read(&mut reader, bincode::config::standard()).context("Failed decode state file!")
     }
 
     fn load_or_default() -> Self {
-        Self::load().unwrap_or_default()
+        Self::load().map_err(|err| log::error!("Load state error: {}", err)).unwrap_or_default()
     }
 
     fn restore_state(&self, ec: &EcDevice) -> Result<()> {
@@ -150,7 +153,9 @@ fn get_system_state(ec: &EcDevice) -> Result<IpcResponse> {
     let chip_name = format!("IT{:02X}{:02X}", chip_id1, chip_id2);
     let revision = format!("{:02X}", chip_ver);
 
-    let sys_info = format!("Controller: {} (Rev {})", chip_name, revision);
+    let sys_info = format!("Controller: {} (Rev {}) \nHRAM Offset: 0x{:04X} \nDaemon Version: {}",
+        chip_name, revision, ec.hram_offset, crate::VERSION
+    );
 
     Ok(IpcResponse::Message(sys_info))
 }
@@ -177,44 +182,44 @@ pub fn get_state() -> Result<std::sync::MutexGuard<'static, CurrentSettings>> {
 }
 
 fn set_charge_limit(ec: &EcDevice, profile: &ChargeLimit) -> Result<IpcResponse> {
+    ec::apply_charge_limit(ec, &profile)?;
     let mut state = get_state()?;
     state.charge_limit = profile.clone();
 
-    ec::apply_charge_limit(ec, &profile)?;
     Ok(IpcResponse::Success)
 }
 
 fn set_keyboard_backlight(ec: &EcDevice, level: &KeyboardBacklightLevel) -> Result<IpcResponse> {
+    ec::apply_keyboard_backlight(ec, level)?;
     let mut state = get_state()?;
     state.keyboard_backlight = *level;
 
-    ec::apply_keyboard_backlight(ec, level)?;
     Ok(IpcResponse::Success)
 }
 
 fn set_fan_mode(ec: &EcDevice, fan: &FanIndex, mode: &FanMode) -> Result<IpcResponse> {
+    ec::apply_fan_mode(ec, fan, mode)?;
     let mut state = get_state()?;
     match fan {
         FanIndex::Cpu => state.fan_mode_cpu = *mode,
         FanIndex::Gpu => state.fan_mode_gpu = *mode,
     }
 
-    ec::apply_fan_mode(ec, fan, mode)?;
     Ok(IpcResponse::Success)
 }
 
 fn set_power_profile(ec: &EcDevice, profile: &PowerProfile) -> Result<IpcResponse> {
+    ec::apply_power_profile(ec, &profile)?;
     let mut state = get_state()?;
     state.power_profile = *profile;
 
-    ec::apply_power_profile(ec, &profile)?;
     Ok(IpcResponse::Success)
 }
 
 fn set_led_mode(ec: &EcDevice, mode: &PowerLedMode) -> Result<IpcResponse> {
+    ec::apply_led_mode(ec, mode)?;
     let mut state = get_state()?;
     state.led_mode = *mode;
 
-    ec::apply_led_mode(ec, mode)?;
     Ok(IpcResponse::Success)
 }

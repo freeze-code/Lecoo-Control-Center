@@ -60,7 +60,7 @@ fn process_ipc_connection(mut conn: IpcConnection) {
 
 /// Process system/service events
 fn process_service(rx_in_core: std::sync::mpsc::Receiver<services::InternalEvent>) {
-    use ipc::{PowerLedMode, BreathConfig, HardwareAnimation};
+    use ipc::{PowerLedMode, BreathConfig};
     let ec = EC.get().unwrap();
 
     loop {
@@ -80,9 +80,7 @@ fn process_service(rx_in_core: std::sync::mpsc::Receiver<services::InternalEvent
                     services::InternalEvent::SystemSleeping => {
                         let _ = ec::apply_led_mode(
                             ec,
-                            &PowerLedMode::Animation(HardwareAnimation::Breathing(
-                                BreathConfig::sleep(),
-                            )),
+                            &PowerLedMode::Animation(BreathConfig::sleep()),
                         );
                     }
 

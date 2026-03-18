@@ -3,7 +3,7 @@ use ipc::{FanIndex, FanMode};
 use super::EcDevice;
 
 pub fn apply_fan_mode(ec: &EcDevice, fan: &FanIndex, mode: &FanMode) -> Result<()> {
-    let thermal_policy_override: u16 = match fan { // TODO: it's ram, change adress.
+    let thermal_policy_override: u16 = match fan {
         FanIndex::Cpu => 0x4F,
         FanIndex::Gpu => 0x4E,
     };

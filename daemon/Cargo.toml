@@ -11,6 +11,7 @@ edition = "2024"
 bincode = "2.0"
 anyhow = "1.0"
 log = "0.4"
+ureq = "3.2.0"
 ipc = { path = "../ipc" }
 
 [target.'cfg(windows)'.dependencies]
