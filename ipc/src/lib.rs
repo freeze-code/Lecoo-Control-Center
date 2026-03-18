@@ -74,7 +74,7 @@ pub enum IpcResponse {
     Temp(u8, u8),
 
     /// Current battery charge limit (min/max percentages)
-    ChargeLimit(u8, u8),
+    ChargeLimit(u8, u8, u8),
 
     /// Current keyboard backlight brightness
     KeyboardBacklight(KeyboardBacklightLevel),

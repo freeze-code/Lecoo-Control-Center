@@ -269,7 +269,7 @@ fn main() -> anyhow::Result<()> {
             println!("   Level: {}", level);
         }
 
-        IpcResponse::ChargeLimit(min, max) => {
+        IpcResponse::ChargeLimit(min, max, current) => {
             println!("🔋 Charge Limit (FlexiCharger):");
             if min == 0 && max == 0 {
                 println!("   Mode: Full Capacity (Charges to 100%)");
@@ -277,6 +277,7 @@ fn main() -> anyhow::Result<()> {
                 println!("   Start charging at: {}%", min);
                 println!("   Stop charging at:  {}%", max);
             }
+            println!("   Current Battery Charge: {}%", current);
         }
 
         IpcResponse::PowerLimit(profile) => {

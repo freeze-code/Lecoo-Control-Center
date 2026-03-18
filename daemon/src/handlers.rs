@@ -130,7 +130,8 @@ fn process_daemon_command(ec: &EcDevice, command: &DaemonCommand) -> Result<IpcR
 
 fn get_charge_limit(ec: &EcDevice) -> Result<IpcResponse> {
     let (min, max) = ec::read_charge_limit(ec)?;
-    Ok(IpcResponse::ChargeLimit(min, max))
+    let current = ec::read_battery_rsoc(ec)?;
+    Ok(IpcResponse::ChargeLimit(min, max, current))
 }
 
 fn get_power_profile(ec: &EcDevice) -> Result<IpcResponse> {
