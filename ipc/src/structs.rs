@@ -70,15 +70,9 @@ pub enum ChargeLimit {
 pub enum PowerLedMode {
     Auto,
     Custom(u8),
-    Animation(HardwareAnimation),
+    Animation(BreathConfig),
 }
 
-/// Represents hardware animations for the LED ring
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode)]
-pub enum HardwareAnimation {
-    Breathing(BreathConfig),
-    Blinking(BlinkConfig),
-}
 
 /// Represents breathing animation brightness levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode)]
@@ -252,29 +246,6 @@ impl BreathConfig {
         }
     }
 }
-
-/// Represents blink configuration parameters
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode)]
-pub struct BlinkConfig {
-    pub prescaler: u8,
-    pub cycle_time: u8,
-    pub duty: u8,
-}
-
-impl BlinkConfig {
-    /// 1 blink per second (Slow Alert)
-    pub fn one_hz_50_percent() -> Self {
-        Self { prescaler: 127, cycle_time: 255, duty: 127 }
-    }
-
-    /// 4 flashes per second (Fast strobe)
-    pub fn four_hz_strobe() -> Self {
-        Self { prescaler: 31, cycle_time: 255, duty: 32 }
-    }
-
-    // todo: add some other anims here
-}
-
 
 /// Current configuration settings of the system
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode)]

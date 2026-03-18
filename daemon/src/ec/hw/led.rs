@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use ipc::{HardwareAnimation, PowerLedMode};
+use ipc::PowerLedMode;
 use anyhow::Result;
 use super::EcDevice;
 
@@ -55,24 +55,8 @@ pub fn apply_led_mode(ec: &EcDevice, mode: &PowerLedMode) -> Result<()> {
             ec.write_reg(REG_PWM_DUTY, *brightness)?;           // PWM Duty Cycle Register (brightness)
         }
 
-        // Set LED to blinking animation
-        PowerLedMode::Animation(HardwareAnimation::Blinking(config)) => {
-            if !IS_LED_ALREADY_CUSTOM.load(Ordering::Relaxed) {
-                ec.write_ram(RAM_LED_BYPASS, 0x01)?;
-                ec.write_reg(REG_GPIO_A0_MUX, 0x00)?;
-                IS_LED_ALREADY_CUSTOM.store(true, Ordering::Relaxed);
-            }
-            reset_led_anim_engine(ec)?;
-            ec.write_reg(REG_LED_BREATH_EN, 0x00)?;
-
-            // Setting up hard blinking using frequency dividers
-            ec.write_reg(REG_PWM_PRESCALER, config.prescaler)?;
-            ec.write_reg(REG_PWM_CYCLE, config.cycle_time)?;
-            ec.write_reg(REG_PWM_DUTY, config.duty)?;
-        }
-
         // Set LED to breathing animation
-        PowerLedMode::Animation(HardwareAnimation::Breathing(config)) => {
+        PowerLedMode::Animation(config) => {
             if !IS_LED_ALREADY_CUSTOM.load(Ordering::Relaxed) {
                 ec.write_ram(RAM_LED_BYPASS, 0x01)?;
                 ec.write_reg(REG_GPIO_A0_MUX, 0x00)?;
