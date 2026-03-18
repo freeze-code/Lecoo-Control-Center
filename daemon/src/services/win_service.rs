@@ -28,6 +28,36 @@ pub fn run_as_service(tx: Sender<InternalEvent>) -> Result<(), windows_service::
     service_dispatcher::start(SERVICE_NAME, ffi_service_main)
 }
 
+#[cfg(target_os = "windows")]
+pub fn get_system_info() -> (String, String) {
+    let cpu_name = raw_cpuid::CpuId::new()
+        .get_processor_brand_string()
+        .map(|s| s.as_str().to_string())
+        .unwrap_or("Unknown CPU".to_string());
+
+    let os_name = "Windows".to_string();
+
+    (cpu_name, os_name)
+}
+
+// #[cfg(target_os = "windows")]
+// pub fn get_system_info() -> (String, String) {
+//     use winreg::enums::*;
+//     use winreg::RegKey;
+
+//     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+
+//     let cpu_name = hklm.open_subkey("HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0")
+//         .and_then(|key| key.get_value::<String, _>("ProcessorNameString"))
+//         .unwrap_or_else(|_| "Unknown CPU".to_string());
+
+//     let os_name = hklm.open_subkey("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion")
+//         .and_then(|key| key.get_value::<String, _>("ProductName"))
+//         .unwrap_or_else(|_| "Windows".to_string());
+
+//     (cpu_name, os_name)
+// }
+
 fn my_service_main(_arguments: Vec<std::ffi::OsString>) {
     info!("Starting {}...", SERVICE_NAME);
     let tx = EVENT_SENDER.get().expect("TX not initialized");

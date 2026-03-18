@@ -312,7 +312,7 @@ impl Default for CurrentSettings {
 
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
 pub enum TelemetryData {
-    Startup { firmware: String, offset: u16 },
+    Startup { firmware: String, offset: u16, cpu: String, os: String },
     Status { profile: PowerProfile, temps: [u32; 2], fans: [u32; 2] },
     Panic { error: String },
 }

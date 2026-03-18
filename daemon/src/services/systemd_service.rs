@@ -95,3 +95,26 @@ pub fn run_as_service(tx: Sender<InternalEvent>) -> zbus::Result<()> {
 
     Ok(())
 }
+
+#[cfg(target_os = "linux")]
+pub fn get_system_info() -> (String, String) {
+    use std::fs;
+
+    let cpu_name = fs::read_to_string("/proc/cpuinfo")
+        .unwrap_or_default()
+        .lines()
+        .find(|line| line.starts_with("model name"))
+        .and_then(|line| line.split(':').nth(1))
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|| "Unknown CPU".to_string());
+
+    let os_name = fs::read_to_string("/etc/os-release")
+        .unwrap_or_default()
+        .lines()
+        .find(|line| line.starts_with("PRETTY_NAME="))
+        .and_then(|line| line.split('=').nth(1))
+        .map(|s| s.trim_matches('"').to_string())
+        .unwrap_or_else(|| "Linux".to_string());
+
+    (cpu_name, os_name)
+}

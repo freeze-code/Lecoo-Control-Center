@@ -3,10 +3,7 @@
 use anyhow::Result;
 use ipc::{CurrentSettings, IpcConnection, IpcRequest, IpcServer};
 use log::info;
-use std::{
-    sync::{Mutex, OnceLock},
-    thread,
-};
+use std::{sync::{Mutex, OnceLock}, thread};
 
 use crate::handlers::DaemonState;
 
@@ -109,8 +106,14 @@ fn main() -> Result<()> {
     telemetry::init(daemon_state.telemetry_enabled, daemon_state.telemetry_client_id);
 
     if daemon_state.telemetry_enabled {
+        let (cpu_name, os_name) = services::get_system_info();
         let (chip_id1, chip_id2, chip_ver) = ec::read_system_info(&ec)?;
-        telemetry::send(ipc::TelemetryData::Startup { firmware: format!("IT{:02X}{:02X}-{:02X}", chip_id1, chip_id2, chip_ver), offset: ec.hram_offset });
+        telemetry::send(ipc::TelemetryData::Startup {
+            firmware: format!("IT{:02X}{:02X}-{:02X}", chip_id1, chip_id2, chip_ver),
+            offset: ec.hram_offset,
+            cpu: cpu_name,
+            os: os_name
+        });
     }
 
     let _ = EC.set(ec);

@@ -31,24 +31,47 @@ fn main() {
     ).expect("Failed to create raw table");
 
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS parsed_telemetry (
+        "CREATE TABLE IF NOT EXISTS startup_events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             raw_id INTEGER NOT NULL,
             client_uuid TEXT NOT NULL,
             daemon_version TEXT NOT NULL,
-            event_type TEXT NOT NULL,
-            firmware TEXT,
-            offset TEXT,
-            profile TEXT,
-            temp_1 INTEGER,
-            temp_2 INTEGER,
-            fan_1 INTEGER,
-            fan_2 INTEGER,
-            error_msg TEXT,
+            firmware TEXT NOT NULL,
+            offset TEXT NOT NULL,
+            cpu TEXT NOT NULL,
+            os TEXT NOT NULL,
             FOREIGN KEY(raw_id) REFERENCES raw_telemetry(id)
         )",
         [],
-    ).expect("Failed to create parsed table");
+    ).expect("Failed to create startup_events table");
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS status_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            raw_id INTEGER NOT NULL,
+            client_uuid TEXT NOT NULL,
+            daemon_version TEXT NOT NULL,
+            profile TEXT NOT NULL,
+            temp_1 INTEGER NOT NULL,
+            temp_2 INTEGER NOT NULL,
+            fan_1 INTEGER NOT NULL,
+            fan_2 INTEGER NOT NULL,
+            FOREIGN KEY(raw_id) REFERENCES raw_telemetry(id)
+        )",
+        [],
+    ).expect("Failed to create status_events table");
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS panic_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            raw_id INTEGER NOT NULL,
+            client_uuid TEXT NOT NULL,
+            daemon_version TEXT NOT NULL,
+            error_msg TEXT NOT NULL,
+            FOREIGN KEY(raw_id) REFERENCES raw_telemetry(id)
+        )",
+        [],
+    ).expect("Failed to create panic_events table");
 
     let db = Arc::new(Mutex::new(conn));
 
@@ -100,27 +123,31 @@ fn main() {
 
             match bincode::decode_from_slice::<TelemetryPayload, _>(&buffer, config) {
                 Ok((payload, _)) => {
-                    let (ev_type, fw, off, prof, t1, t2, f1, f2, err_msg) = match payload.data {
-                        TelemetryData::Startup { firmware, offset } => {
+                    let client_uuid = format!("0x{:016X}", payload.id);
+
+                    let insert_result = match payload.data {
+                        TelemetryData::Startup { firmware, offset, cpu, os } => {
                             let hex_offset = format!("0x{:04X}", offset);
-                            ("Startup", Some(firmware), Some(hex_offset), None, None, None, None, None, None)
+                            lock.execute(
+                                "INSERT INTO startup_events (raw_id, client_uuid, daemon_version, firmware, offset, cpu, os) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                                params![raw_id, client_uuid, &daemon_version, firmware, hex_offset, cpu, os],
+                            )
                         }
                         TelemetryData::Status { profile, temps, fans } => {
-                            ("Status", None, None, Some(format!("{:?}", profile)), Some(temps[0]), Some(temps[1]), Some(fans[0]), Some(fans[1]), None)
+                            lock.execute(
+                                "INSERT INTO status_events (raw_id, client_uuid, daemon_version, profile, temp_1, temp_2, fan_1, fan_2) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                                params![raw_id, client_uuid, &daemon_version, format!("{:?}", profile), temps[0], temps[1], fans[0], fans[1]],
+                            )
                         }
                         TelemetryData::Panic { error } => {
-                            ("Panic", None, None, None, None, None, None, None, Some(error))
+                            lock.execute(
+                                "INSERT INTO panic_events (raw_id, client_uuid, daemon_version, error_msg) VALUES (?1, ?2, ?3, ?4)",
+                                params![raw_id, client_uuid, &daemon_version, error],
+                            )
                         }
                     };
 
-                    if let Err(e) = lock.execute(
-                        "INSERT INTO parsed_telemetry (
-                            raw_id, client_uuid, daemon_version, event_type, firmware, offset, profile, temp_1, temp_2, fan_1, fan_2, error_msg
-                        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
-                        params![
-                            raw_id, format!("0x{:016X}", payload.id), &daemon_version, ev_type, fw, off, prof, t1, t2, f1, f2, err_msg
-                        ],
-                    ) {
+                    if let Err(e) = insert_result {
                         error!("Failed to insert parsed telemetry (Raw ID: {}): {}", raw_id, e);
                         let _ = request.respond(Response::empty(500));
                     } else {

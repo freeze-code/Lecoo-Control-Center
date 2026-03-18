@@ -19,6 +19,7 @@ simplelog = "0.11"
 libloading = "0.9.0"
 windows-service = "0.8"
 file-rotate = "0.8"
+raw-cpuid = "11.6.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus = "5"
