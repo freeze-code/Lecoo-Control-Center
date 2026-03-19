@@ -4,7 +4,7 @@ use ipc::{ChargeLimit, FanIndex, FanMode, IpcClient, IpcRequest, IpcResponse, Ke
 
 #[derive(Parser)]
 #[command(name = "lecoo-ctrl")]
-#[command(about = "Lecoo Control Center CLI", long_about = None)]
+#[command(version, about = "Lecoo Control Center CLI", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
