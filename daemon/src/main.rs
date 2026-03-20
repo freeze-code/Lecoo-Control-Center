@@ -67,7 +67,8 @@ fn process_service(rx_in_core: std::sync::mpsc::Receiver<services::InternalEvent
                     services::InternalEvent::SystemShuttingDown => {
                         ec::apply_led_mode(ec, &PowerLedMode::Auto).expect("Failed to set LED mode to Auto");
                         if let Ok(mut state) = handlers::get_state() {
-                            state.keyboard_backlight = ec::read_keyboard_backlight(ec).expect("Failed to read keyboard backlight");
+                            let _ = ec::read_keyboard_backlight(ec).map(|kbd| state.keyboard_backlight = kbd);
+                            let _ = ec::read_power_profile(ec).map(|profile| state.power_profile = profile);
                             let _ = state.save();
                         } else {
                             log::error!("Incomplete state save on shutdown");
@@ -83,8 +84,11 @@ fn process_service(rx_in_core: std::sync::mpsc::Receiver<services::InternalEvent
 
                     services::InternalEvent::SystemWakingUp => {
                         let led_mode = handlers::get_state().map(|state| state.led_mode).unwrap_or(PowerLedMode::Auto);
-                        let _ = ec::apply_led_mode(ec, &led_mode);
+                        let _ = ec::apply_led_mode(ec, &led_mode); // todo: restore all state
                     }
+
+                    #[cfg(windows)]
+                    services::InternalEvent::Inited => {}
                 };
             }
             Err(_) => break,
@@ -94,6 +98,13 @@ fn process_service(rx_in_core: std::sync::mpsc::Receiver<services::InternalEvent
 
 fn main() -> Result<()> {
     services::init_logger();
+    let (tx_to_core, rx_in_core) = std::sync::mpsc::channel();
+
+    let _service_worker = services::start(tx_to_core);
+
+    // Let's give this MicroSLOP piece of the ~~shit~~ OS time to initialize the service
+    #[cfg(windows)]
+    let _ = rx_in_core.recv();
 
     let mut server = IpcServer::bind()?;
     let ec = ec::EcDevice::new()?;
@@ -118,9 +129,6 @@ fn main() -> Result<()> {
 
     let _ = EC.set(ec);
     let _ = STATE.set(Mutex::new(daemon_state));
-    let (tx_to_core, rx_in_core) = std::sync::mpsc::channel();
-
-    let _service_worker = services::start(tx_to_core);
     info!("Daemon started.");
 
     thread::Builder::new()

@@ -45,6 +45,7 @@ impl DaemonState for CurrentSettings {
         ec::apply_keyboard_backlight(ec, &self.keyboard_backlight)?;
         ec::apply_led_mode(ec, &self.led_mode)?;
         ec::apply_power_profile(ec, &self.power_profile)?;
+        ec::apply_charge_limit(ec, &self.charge_limit)?;
         ec::apply_fan_mode(ec, &ipc::FanIndex::Cpu, &self.fan_mode_cpu)?;
         ec::apply_fan_mode(ec, &ipc::FanIndex::Gpu, &self.fan_mode_gpu)?;
         Ok(())

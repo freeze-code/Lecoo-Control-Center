@@ -34,7 +34,7 @@ impl EcDevice {
         let mut device = Self {
             io: Mutex::new(io),
             port: 0,
-            hram_offset: 0
+            hram_offset: 0xFF
         };
 
         device.detect()?;
@@ -49,7 +49,7 @@ impl EcDevice {
             }
         }
 
-        if device.hram_offset == 0 {
+        if device.hram_offset == 0xFF {
             bail!("Failed to detect HRAM window base address");
         }
 

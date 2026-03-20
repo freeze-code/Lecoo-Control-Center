@@ -573,7 +573,7 @@ dependencies = [
 
 [[package]]
 name = "gui"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "anyhow",
  "ipc",
@@ -709,7 +709,7 @@ dependencies = [
 
 [[package]]
 name = "ipc"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "bincode",
  "interprocess",
@@ -746,7 +746,7 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
 name = "lecoo-ctrl"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -755,7 +755,7 @@ dependencies = [
 
 [[package]]
 name = "lecoo-ec-daemon"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "anyhow",
  "bincode",
@@ -763,11 +763,11 @@ dependencies = [
  "ipc",
  "libloading",
  "log",
- "raw-cpuid",
  "simplelog",
  "systemd-journal-logger",
  "ureq",
  "windows-service",
+ "winreg",
  "zbus",
 ]
 
@@ -957,15 +957,6 @@ name = "r-efi"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
-
-[[package]]
-name = "raw-cpuid"
-version = "11.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "498cd0dc59d73224351ee52a95fee0f1a617a2eae0e7d9d720cc622c73a54186"
-dependencies = [
- "bitflags",
-]
 
 [[package]]
 name = "recvmsg"
@@ -1195,7 +1186,7 @@ dependencies = [
 
 [[package]]
 name = "telemetry_server"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "bincode",
  "ipc",
@@ -1700,6 +1691,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df79d97927682d2fd8adb29682d1140b343be4ac0f08fd68b7765d9c059d3945"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "winreg"
+version = "0.56.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d6f32a0ff4a9f6f01231eb2059cc85479330739333e0e58cadf03b6af2cca10"
+dependencies = [
+ "cfg-if",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

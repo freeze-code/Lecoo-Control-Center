@@ -16,6 +16,8 @@ pub enum InternalEvent {
     SystemShuttingDown,
     SystemSleeping,
     SystemWakingUp,
+    #[cfg(windows)]
+    Inited,
 }
 
 pub fn start(tx: Sender<InternalEvent>) -> JoinHandle<()> {

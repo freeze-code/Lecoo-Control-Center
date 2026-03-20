@@ -5,7 +5,7 @@ setlocal enabledelayedexpansion
 ::  Lecoo Control Center - Uninstaller
 :: ============================================================
 set "INSTALL_DIR=%ProgramFiles%\LecooControlCenter"
-set "SERVICE_NAME=LecooControlCenter"
+set "SERVICE_NAME=LecooControlDaemon"
 set "DAEMON_EXE=lecoo-ec-daemon.exe"
 :: ============================================================
 

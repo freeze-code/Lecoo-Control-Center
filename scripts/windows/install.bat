@@ -161,6 +161,7 @@ echo [6/7] Registering Windows service...
 sc create "%SERVICE_NAME%" ^
     binPath= "\"%INSTALL_DIR%\%DAEMON_EXE%\" --service" ^
     start= auto ^
+    depend= RpcSs ^
     DisplayName= "%SERVICE_DISPLAY%" >nul 2>&1
 if !errorLevel! neq 0 (
     echo       [FAIL] sc create failed.
