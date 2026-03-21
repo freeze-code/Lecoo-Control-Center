@@ -8,7 +8,6 @@ Lecoo Control Center — это созданный методом обратно
 <div align="center">
 
 [![GitHub Release](https://img.shields.io/github/v/release/LaVashikk/Lecoo-Control-Center?color=orange)](https://github.com/LaVashikk/Lecoo-Control-Center/releases/latest)
-[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](https://github.com/LaVashikk/Lecoo-Control-Center/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/LaVashikk/Lecoo-Control-Center/blob/main/LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey.svg)]()
 [![Language](https://img.shields.io/badge/language-Rust-orange.svg)]()
