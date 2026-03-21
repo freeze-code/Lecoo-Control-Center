@@ -88,6 +88,32 @@ pub enum ChargeLimit {
     DeskMode,           // 40%
     // Custom(u8),  // TODO: too dangerous, I think?
 }
+impl ChargeLimit {
+    pub fn as_percent(&self) -> (u8, u8) {
+        match self {
+            ChargeLimit::FullCapacity => (0, 0),
+            ChargeLimit::HighCapacity => (90, 95),
+            ChargeLimit::Balanced => (70, 80),
+            ChargeLimit::MaximumLifespan => (55, 60),
+            ChargeLimit::DeskMode => (40, 50),
+            // ChargeLimit::Custom(val) => (val.saturating_sub(5), val)
+        }
+    }
+
+    pub fn from_predefined(min: u8, max: u8) -> Option<Self> {
+        if min > max {
+            return None;
+        }
+        match (min, max) {
+            (0, 0) => Some(Self::FullCapacity),
+            (90, 95) => Some(Self::HighCapacity),
+            (70, 80) => Some(Self::Balanced),
+            (55, 60) => Some(Self::MaximumLifespan),
+            (40, 50) => Some(Self::DeskMode),
+            _ => None, // todo: custom
+        }
+    }
+}
 
 /// Represents the LED Ring behavior
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode)]

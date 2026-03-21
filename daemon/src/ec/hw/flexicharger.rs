@@ -17,14 +17,7 @@ pub fn read_battery_rsoc(ec: &EcDevice) -> Result<u8> {
 }
 
 pub fn apply_charge_limit(ec: &EcDevice, limit: &ChargeLimit) -> Result<()> {
-    let (min, max) = match limit {
-        ChargeLimit::FullCapacity => (0, 0),
-        ChargeLimit::HighCapacity => (90, 95),
-        ChargeLimit::Balanced => (70, 80),
-        ChargeLimit::MaximumLifespan => (55, 60),
-        ChargeLimit::DeskMode => (40, 50),
-        // ChargeLimit::Custom(val) => (val.saturating_sub(5), val)
-    };
+    let (min, max) = limit.as_percent();
 
     ec.write_ram(RAM_BAT_LIMIT_MIN, min)?;
     ec.write_ram(RAM_BAT_LIMIT_MAX, max)?;

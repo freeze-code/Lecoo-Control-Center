@@ -1,7 +1,7 @@
 // #![windows_subsystem = "windows"]
 
 use anyhow::Result;
-use ipc::{CurrentSettings, IpcConnection, IpcRequest, IpcServer};
+use ipc::{ChargeLimit, CurrentSettings, IpcConnection, IpcRequest, IpcServer};
 use log::info;
 use std::{sync::{Mutex, OnceLock}, thread};
 
@@ -69,6 +69,9 @@ fn process_service(rx_in_core: std::sync::mpsc::Receiver<services::InternalEvent
                         if let Ok(mut state) = handlers::get_state() {
                             let _ = ec::read_keyboard_backlight(ec).map(|kbd| state.keyboard_backlight = kbd);
                             let _ = ec::read_power_profile(ec).map(|profile| state.power_profile = profile);
+                            let _ = ec::read_charge_limit(ec).map(|(min, max)|
+                                state.charge_limit = ChargeLimit::from_predefined(min, max).unwrap_or(ChargeLimit::FullCapacity)
+                            );
                             let _ = state.save();
                         } else {
                             log::error!("Incomplete state save on shutdown");
@@ -83,8 +86,7 @@ fn process_service(rx_in_core: std::sync::mpsc::Receiver<services::InternalEvent
                     }
 
                     services::InternalEvent::SystemWakingUp => {
-                        let led_mode = handlers::get_state().map(|state| state.led_mode).unwrap_or(PowerLedMode::Auto);
-                        let _ = ec::apply_led_mode(ec, &led_mode); // todo: restore all state
+                        let _ = handlers::get_state().map(|state| state.restore_state(ec));
                     }
 
                     #[cfg(windows)]

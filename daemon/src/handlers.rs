@@ -185,7 +185,7 @@ pub fn get_state() -> Result<std::sync::MutexGuard<'static, CurrentSettings>> {
 fn set_charge_limit(ec: &EcDevice, profile: &ChargeLimit) -> Result<IpcResponse> {
     ec::apply_charge_limit(ec, &profile)?;
     let mut state = get_state()?;
-    state.charge_limit = profile.clone();
+    state.charge_limit = *profile;
 
     Ok(IpcResponse::Success)
 }
