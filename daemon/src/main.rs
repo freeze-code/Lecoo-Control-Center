@@ -102,11 +102,17 @@ fn main() -> Result<()> {
     services::init_logger();
     let (tx_to_core, rx_in_core) = std::sync::mpsc::channel();
 
-    let _service_worker = services::start(tx_to_core);
-
     // Let's give this MicroSLOP piece of the ~~shit~~ OS time to initialize the service
     #[cfg(windows)]
-    let _ = rx_in_core.recv();
+    if std::env::args().collect::<Vec<String>>().contains(&"--service".to_string()) {
+        let _service_worker = services::start(tx_to_core);
+        let _ = rx_in_core.recv();
+        thread::sleep(std::time::Duration::from_secs(3));
+    }
+
+    // Linux just start the service
+    #[cfg(not(windows))]
+    let _service_worker = services::start(tx_to_core);
 
     let mut server = IpcServer::bind()?;
     let ec = ec::EcDevice::new()?;

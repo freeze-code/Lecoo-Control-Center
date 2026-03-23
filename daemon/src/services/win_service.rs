@@ -157,6 +157,7 @@ pub fn init_logger() {
         );
 
         log::error!("{}", error);
+        log::logger().flush();
         crate::telemetry::send(
             TelemetryData::Panic { error }
         );
