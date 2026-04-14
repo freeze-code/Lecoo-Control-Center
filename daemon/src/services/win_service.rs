@@ -7,6 +7,8 @@ use file_rotate::compression::Compression;
 use file_rotate::suffix::AppendCount;
 use file_rotate::{ContentLimit, FileRotate};
 use ipc::TelemetryData;
+use winreg::enums::*;
+use winreg::RegKey;
 use log::{LevelFilter, info};
 use simplelog::{Config, WriteLogger};
 use windows_service::service::ServiceType;
@@ -28,22 +30,38 @@ pub fn run_as_service(tx: Sender<InternalEvent>) -> Result<(), windows_service::
     service_dispatcher::start(SERVICE_NAME, ffi_service_main)
 }
 
-#[cfg(target_os = "windows")]
-pub fn get_system_info() -> (String, String) {
-    use winreg::enums::*;
-    use winreg::RegKey;
+pub fn get_board_name() -> String {
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    hklm.open_subkey("HARDWARE\\DESCRIPTION\\System\\BIOS")
+        .and_then(|key| key.get_value::<String, _>("BaseBoardProduct"))
+        .unwrap_or_else(|_| "Unknown Motherboard".to_string())
+}
 
+pub fn get_system_info() -> (String, String, String) {
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
 
     let cpu_name = hklm.open_subkey("HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0")
         .and_then(|key| key.get_value::<String, _>("ProcessorNameString"))
         .unwrap_or_else(|_| "Unknown CPU".to_string());
 
-    let os_name = hklm.open_subkey("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion")
-        .and_then(|key| key.get_value::<String, _>("ProductName"))
-        .unwrap_or_else(|_| "Windows".to_string());
+    let motherboard = get_board_name();
 
-    (cpu_name, os_name)
+    let (mut os_name, os_version) = hklm.open_subkey("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion")
+        .map(|key| {
+            let name = key.get_value::<String, _>("ProductName").unwrap_or_else(|_| "Windows".to_string());
+            let build = key.get_value::<String, _>("CurrentBuild").unwrap_or_else(|_| "0".to_string());
+            (name, build)
+        })
+        .unwrap_or_else(|_| ("Windows".to_string(), "0".to_string()));
+
+    let build_number = os_version.parse().unwrap_or(0);
+
+    // restore the real windows version
+    if os_name.contains("Windows 10") && build_number >= 22000 {
+        os_name = os_name.replace("Windows 10", "Windows 11");
+    }
+
+    (cpu_name, format!("{} (Build {})", os_name, os_version), motherboard)
 }
 
 fn my_service_main(_arguments: Vec<std::ffi::OsString>) {

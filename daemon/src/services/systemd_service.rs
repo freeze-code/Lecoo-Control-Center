@@ -1,3 +1,4 @@
+use std::fs;
 use std::sync::mpsc::Sender;
 use std::{panic, thread};
 use zbus::blocking::Connection;
@@ -72,6 +73,16 @@ trait LoginManager {
     /// PrepareForShutdown(start: bool)
     #[zbus(signal)]
     fn prepare_for_shutdown(&self, start: bool) -> zbus::Result<()>;
+}
+
+#[zbus::proxy(
+    interface = "org.freedesktop.UPower",
+    default_service = "org.freedesktop.UPower",
+    default_path = "/org/freedesktop/UPower"
+)]
+trait UPower {
+    #[zbus(property)]
+    fn on_battery(&self) -> zbus::Result<bool>;
 }
 
 pub fn run_as_service(tx: Sender<InternalEvent>) -> zbus::Result<()> {
@@ -206,10 +217,13 @@ pub fn run_as_service(tx: Sender<InternalEvent>) -> zbus::Result<()> {
     Ok(())
 }
 
-#[cfg(target_os = "linux")]
-pub fn get_system_info() -> (String, String) {
-    use std::fs;
+pub fn get_board_name() -> String {
+    fs::read_to_string("/sys/devices/virtual/dmi/id/board_name")
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|_| "Unknown Host".to_string())
+}
 
+pub fn get_system_info() -> (String, String, String) {
     let cpu_name = fs::read_to_string("/proc/cpuinfo")
         .unwrap_or_default()
         .lines()
@@ -226,5 +240,12 @@ pub fn get_system_info() -> (String, String) {
         .map(|s| s.trim_matches('"').to_string())
         .unwrap_or_else(|| "Linux".to_string());
 
-    (cpu_name, os_name)
+    let host_name = fs::read_to_string("/sys/devices/virtual/dmi/id/product_name")
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|_| "Unknown Host".to_string());
+
+    let board_name = get_board_name();
+    dbg!(get_board_name());
+
+    (cpu_name, os_name, format!("{} ({})", host_name, board_name))
 }
