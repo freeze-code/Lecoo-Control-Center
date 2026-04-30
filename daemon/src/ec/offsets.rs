@@ -37,6 +37,9 @@ pub struct EcOffsets {
     /// LED state override (0x00 = Auto, 0x01 = Custom/Bypass)
     pub ram_led_bypass: u16,
 
+    // Timer that resets manual control back to EC (0x04 to disable/extend)
+    pub ram_kbd_bypass_timeout: u16,
+
     // ==========================================
     // Absolute Registers
     // ==========================================
@@ -49,8 +52,10 @@ pub struct EcOffsets {
 
     /// Port A0 Control (Switches pin to manual PWM mode)
     pub reg_gpdra: u16,
-    /// Switches pin to manual PWM mode
+    /// Switches pin A0 to manual PWM mode
     pub reg_gpio_a0_mux: u16,
+    /// Port pin A4 to manual PWM mode
+    pub reg_gpio_a4_mux: u16,
     /// PWM clock prescaler (0x00 = max frequency)
     pub reg_pwm_prescaler: u16,
     /// PWM resolution / cycle time (0xFF = 256 steps)
@@ -101,8 +106,9 @@ impl EcOffsets {
         ram_bat_limit_min: 0xBC,
         ram_bat_limit_max: 0xBB,
 
-        // LED
+        // Bypasses
         ram_led_bypass: 0x55,
+        ram_kbd_bypass_timeout: 0xA6,
 
         // Absolute Regs (Keyboard)
         reg_kbd_backlight: 0x0F05,
@@ -111,6 +117,7 @@ impl EcOffsets {
         // Absolute Regs (LED)
         reg_gpdra: 0x1601,
         reg_gpio_a0_mux: 0x1610,
+        reg_gpio_a4_mux: 0x1614,
         reg_pwm_prescaler: 0x1800,
         reg_pwm_cycle: 0x1801,
         reg_pwm_duty: 0x1802,
