@@ -41,9 +41,8 @@ enum Commands {
 
     /// Get or set battery charge limit
     Charge {
-        /// Empty to read limit. To set, use: full, high, balanced, lifespan, desk
-        #[arg(value_parser = parse_charge_arg)]
-        limit: Option<ChargeLimit>,
+        #[arg(value_enum)]
+        limit: Option<CliChargeLimit>,
     },
 
     /// Set system power profile
@@ -139,37 +138,19 @@ enum CliSettingsAction {
     Apply,
 }
 
-// --- Custom Parsers ---
-
-fn parse_charge_arg(s: &str) -> Result<ChargeLimit, String> {
-    match s.to_lowercase().as_str() {
-        "full" => Ok(ChargeLimit::FullCapacity),
-        "high" => Ok(ChargeLimit::HighCapacity),
-        "balanced" => Ok(ChargeLimit::Balanced),
-        "lifespan" => Ok(ChargeLimit::MaximumLifespan),
-        "desk" => Ok(ChargeLimit::DeskMode),
-        _ => Err("Use a preset: full, high, balanced, lifespan, desk".to_string()),
-        // other => {
-        //     if let Ok(val) = other.parse::<u8>() {
-        //         if val <= 100 {
-        //             Ok(ChargeLimit::Custom(val))
-        //         } else {
-        //             Err("Limit must be between 0 and 100".to_string())
-        //         }
-        //     } else {
-        //         Err("Use a percentage (0-100) or preset: full, balanced, lifespan".to_string())
-        //     }
-        // }
-    }
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum CliChargeLimit {
+    /// Full capacity (Charges to 100%)
+    Full,
+    /// High capacity (Charges to 95%)
+    High,
+    /// Balanced mode (Charges to 80%)
+    Balanced,
+    /// Maximum battery lifespan (Charges to 60%)
+    Lifespan,
+    /// Desk mode for plugged-in usage (Charges to 40%)
+    Desk,
 }
-
-// fn parse_hex_or_dec(s: &str) -> Result<u16, std::num::ParseIntError> {
-//     if let Some(hex) = s.strip_prefix("0x") {
-//         u16::from_str_radix(hex, 16)
-//     } else {
-//         s.parse::<u16>()
-//     }
-// }
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
@@ -228,12 +209,19 @@ fn main() -> anyhow::Result<()> {
             IpcRequest::SetFanMode { fan: fan_idx, mode: fan_mode }
         }
 
-        Commands::Charge { limit } => {
-            match limit {
-                Some(l) => IpcRequest::SetChargeLimit(l),
-                None => IpcRequest::GetChargeLimit,
+        Commands::Charge { limit } => match limit {
+            Some(cli_limit) => {
+                let ipc_limit = match cli_limit {
+                    CliChargeLimit::Full => ChargeLimit::FullCapacity,
+                    CliChargeLimit::High => ChargeLimit::HighCapacity,
+                    CliChargeLimit::Balanced => ChargeLimit::Balanced,
+                    CliChargeLimit::Lifespan => ChargeLimit::MaximumLifespan,
+                    CliChargeLimit::Desk => ChargeLimit::DeskMode,
+                };
+                IpcRequest::SetChargeLimit(ipc_limit)
             }
-        }
+            None => IpcRequest::GetChargeLimit,
+        },
 
         Commands::Kbd { level } => match level {
             Some(l) => {
@@ -281,7 +269,12 @@ fn main() -> anyhow::Result<()> {
     // Result handling
     match res {
         IpcResponse::Success => println!("Done."),
-        IpcResponse::Message(msg) => println!("{}", msg),
+
+        IpcResponse::SystemInfo(chip_name, chip_rev, hram_offset, version) => {
+            println!("Controller: {} (Rev {}) \nHRAM Offset: 0x{:04X} \nDaemon Version: {}",
+                chip_name, chip_rev, hram_offset, version
+            );
+        }
 
         IpcResponse::FanRPM(cpu, gpu) => {
             println!("⚙️ Fan Speeds:");
@@ -314,6 +307,10 @@ fn main() -> anyhow::Result<()> {
         IpcResponse::PowerLimit(profile) => {
             println!("⚡ Power Profile:");
             println!("   Current: {}", profile);
+        }
+
+        IpcResponse::TelemetryDisabledInfo => {
+            println!("🔗 Anonymous Telemetry Disabled. Telemetry helps me improve the quality of this project.\nPlease consider enabling it, it's free and anonymous :)");
         }
 
         IpcResponse::Error(msg) => {
