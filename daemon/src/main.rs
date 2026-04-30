@@ -63,9 +63,11 @@ fn process_service(rx_in_core: std::sync::mpsc::Receiver<services::InternalEvent
         if let Ok(mut state) = handlers::get_state() {
             let _ = ec::read_keyboard_backlight(ec).map(|kbd| state.keyboard_backlight = kbd);
             let _ = ec::read_power_profile(ec).map(|profile| state.power_profile = profile);
-            let _ = ec::read_charge_limit(ec).map(|(min, max)|
-                state.charge_limit = ChargeLimit::from_predefined(min, max).unwrap_or(ChargeLimit::FullCapacity)
-            );
+            if let Ok((min, max)) = ec::read_charge_limit(ec) {
+                if let Some(limit) = ChargeLimit::from_predefined(min, max) {
+                    state.charge_limit = limit;
+                }
+            }
             let _ = state.save();
         } else {
             log::error!("Incomplete state save on event");
