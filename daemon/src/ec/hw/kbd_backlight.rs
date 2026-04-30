@@ -26,14 +26,16 @@ pub fn apply_keyboard_backlight(ec: &EcDevice, level: &KeyboardBacklightLevel) -
         KeyboardBacklightLevel::Medium => ec.write_reg(addr, 0x02)?,
         KeyboardBacklightLevel::High => ec.write_reg(addr, 0x03)?,
         KeyboardBacklightLevel::Custom(v) => {
-            // disable kdb timer
-            ec.write_ram(ec.offsets.ram_kbd_bypass_timeout, 0xFF)?;
-            // and enable PWM
-            ec.write_reg(ec.offsets.reg_gpio_a4_mux, 0x00)?;
+            ec.with_batch(|b| {
+                // disable kdb timer
+                b.write_ram(b.offsets.ram_kbd_bypass_timeout, 0xFF)?;
+                // and enable PWM
+                b.write_reg(b.offsets.reg_gpio_a4_mux, 0x00)?;
 
-            // set custom value
-            ec.write_reg(addr, 0xFF)?;
-            ec.write_reg(ec.offsets.reg_kbd_custom_val, *v)?
+                // set custom value
+                b.write_reg(addr, 0xFF)?;
+                b.write_reg(b.offsets.reg_kbd_custom_val, *v)
+            })?;
         }
     }
 

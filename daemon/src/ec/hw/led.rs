@@ -4,36 +4,6 @@ use ipc::PowerLedMode;
 use anyhow::Result;
 use super::EcDevice;
 
-// /// EC state override (0x00 = Auto, 0x01 = Custom/Bypass)
-// const ec.offsets.ram_led_bypass: u16 = 0x55;
-
-// const REG_GPDRA: u16 = 0x1601;
-
-// const MASK_ORANGE_LED: u8 = 0x02; // bit 1
-// const MASK_WHITE_LED: u8  = 0x04; // bit 2
-
-
-// /// Port A0 Control (Switches pin to manual PWM mode)
-// const REG_GPIO_A0_MUX: u16 = 0x1610;
-
-// /// PWM clock prescaler (0x00 = max frequency)
-// const REG_PWM_PRESCALER: u16 = 0x1800;
-// /// PWM resolution / cycle time (0xFF = 256 steps)
-// const REG_PWM_CYCLE: u16 = 0x1801;
-// /// Main brightness level (Duty Cycle)
-// const REG_PWM_DUTY: u16 = 0x1802;
-
-// const REG_PWM_CLOCK_CTRL: u16 = 0x1823; // ZTIER
-
-// /// Hardware breathing toggle/enable
-// const REG_LED_BREATH_EN: u16 = 0x1850;
-// /// LCR1: Max Brightness, Step Up & Step Down timings
-// const REG_LED_BREATH_STEP: u16 = 0x1851;
-// /// LCR2: Delays at Max and Min brightness levels
-// const REG_LED_BREATH_DELAY: u16 = 0x1852;
-
-// ======================
-
 static IS_LED_ALREADY_CUSTOM: AtomicBool = AtomicBool::new(false);
 
 pub fn reset_led_anim_engine(ec: &EcDevice) -> Result<()> {

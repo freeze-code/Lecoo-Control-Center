@@ -15,8 +15,10 @@ pub fn read_battery_rsoc(ec: &EcDevice) -> Result<u8> {
 pub fn apply_charge_limit(ec: &EcDevice, limit: &ChargeLimit) -> Result<()> {
     let (min, max) = limit.as_percent();
 
-    ec.write_ram(ec.offsets.ram_bat_limit_min, min)?;
-    ec.write_ram(ec.offsets.ram_bat_limit_max, max)?;
+    ec.with_batch(|b| {
+        b.write_ram(b.offsets.ram_bat_limit_min, min)?;
+        b.write_ram(b.offsets.ram_bat_limit_max, max)
+    })?;
 
     Ok(())
 }

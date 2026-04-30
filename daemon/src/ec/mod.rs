@@ -110,72 +110,111 @@ impl EcDevice {
         bail!("ITE IT5570/IT8987 chip not found on any known port")
     }
 
-    // --- High-Level EC Access ---
+    /// Executes a closure safely within a locked Mutex context.
+    /// This ensures atomic multi-step Super I/O transactions (like reading MSB and LSB),
+    /// preventing thread race conditions and data tearing.
+    pub fn with_batch<F, R>(&self, f: F) -> Result<R>
+    where
+        F: FnOnce(&EcBatch) -> Result<R>,
+    {
+        let guard = self.io.lock().unwrap();
 
-    /// Reads a single byte from the specified EC register address.
-    pub fn read_reg(&self, addr: u16) -> Result<u8> {
-        // Lock the mutex for the entire 6-step transaction.
-        // No other thread can access `io.outb` or `io.inb` until this block finishes.
-        let io = self.io.lock().unwrap();
-        let port = self.port;
+        let batch = EcBatch {
+            io: guard,
+            port: self.port,
+            hram_offset: self.hram_offset,
+            offsets: &self.offsets,
+        };
 
-        let addr_high = (addr >> 8) as u8;
-        let addr_low = (addr & 0xFF) as u8;
-
-        io.outb(port, 0x2E)?;
-        io.outb(port + 1, 0x11)?;
-
-        io.outb(port, 0x2F)?;
-        io.outb(port + 1, addr_high)?;
-
-        io.outb(port, 0x2E)?;
-        io.outb(port + 1, 0x10)?;
-
-        io.outb(port, 0x2F)?;
-        io.outb(port + 1, addr_low)?;
-
-        io.outb(port, 0x2E)?;
-        io.outb(port + 1, 0x12)?;
-
-        io.outb(port, 0x2F)?;
-        io.inb(port + 1)
+        f(&batch)
     }
 
-    /// Writes a single byte to the specified EC register address.
-    pub fn write_reg(&self, addr: u16, val: u8) -> Result<()> {
-        let io = self.io.lock().unwrap();
-        let port = self.port;
+    // --- High-Level Facades ---
+    pub fn read_reg(&self, addr: u16) -> Result<u8> {
+        self.with_batch(|b| b.read_reg(addr))
+    }
 
+    pub fn write_reg(&self, addr: u16, val: u8) -> Result<()> {
+        self.with_batch(|b| b.write_reg(addr, val))
+    }
+
+    pub fn read_ram(&self, offset: u16) -> Result<u8> {
+        self.with_batch(|b| b.read_ram(offset))
+    }
+
+    pub fn write_ram(&self, offset: u16, val: u8) -> Result<()> {
+        self.with_batch(|b| b.write_ram(offset, val))
+    }
+}
+
+/// A short-lived transaction guard holding the hardware mutex.
+/// Contains the actual low-level port read/write implementations.
+pub struct EcBatch<'a> {
+    io: std::sync::MutexGuard<'a, RawPortIo>,
+    port: u16,
+    pub hram_offset: u16,
+    pub offsets: &'a EcOffsets,
+}
+
+impl<'a> EcBatch<'a> {
+    /// Reads a single byte from the specified EC absolute register address.
+    pub fn read_reg(&self, addr: u16) -> Result<u8> {
         let addr_high = (addr >> 8) as u8;
         let addr_low = (addr & 0xFF) as u8;
 
-        io.outb(port, 0x2E)?;
-        io.outb(port + 1, 0x11)?;
+        self.io.outb(self.port, 0x2E)?;
+        self.io.outb(self.port + 1, 0x11)?;
 
-        io.outb(port, 0x2F)?;
-        io.outb(port + 1, addr_high)?;
+        self.io.outb(self.port, 0x2F)?;
+        self.io.outb(self.port + 1, addr_high)?;
 
-        io.outb(port, 0x2E)?;
-        io.outb(port + 1, 0x10)?;
+        self.io.outb(self.port, 0x2E)?;
+        self.io.outb(self.port + 1, 0x10)?;
 
-        io.outb(port, 0x2F)?;
-        io.outb(port + 1, addr_low)?;
+        self.io.outb(self.port, 0x2F)?;
+        self.io.outb(self.port + 1, addr_low)?;
 
-        io.outb(port, 0x2E)?;
-        io.outb(port + 1, 0x12)?;
+        self.io.outb(self.port, 0x2E)?;
+        self.io.outb(self.port + 1, 0x12)?;
 
-        io.outb(port, 0x2F)?;
-        io.outb(port + 1, val)?;
+        self.io.outb(self.port, 0x2F)?;
+        self.io.inb(self.port + 1)
+    }
+
+    /// Writes a single byte to the specified EC absolute register address.
+    pub fn write_reg(&self, addr: u16, val: u8) -> Result<()> {
+        let addr_high = (addr >> 8) as u8;
+        let addr_low = (addr & 0xFF) as u8;
+
+        self.io.outb(self.port, 0x2E)?;
+        self.io.outb(self.port + 1, 0x11)?;
+
+        self.io.outb(self.port, 0x2F)?;
+        self.io.outb(self.port + 1, addr_high)?;
+
+        self.io.outb(self.port, 0x2E)?;
+        self.io.outb(self.port + 1, 0x10)?;
+
+        self.io.outb(self.port, 0x2F)?;
+        self.io.outb(self.port + 1, addr_low)?;
+
+        self.io.outb(self.port, 0x2E)?;
+        self.io.outb(self.port + 1, 0x12)?;
+
+        self.io.outb(self.port, 0x2F)?;
+        self.io.outb(self.port + 1, val)?;
 
         Ok(())
     }
 
     // --- Hardware-Specific Helpers (Shared Memory Space) ---
 
+    /// Reads a single byte from the HRAM window using the detected offset.
     pub fn read_ram(&self, offset: u16) -> Result<u8> {
         self.read_reg(self.hram_offset + offset)
     }
 
+    /// Writes a single byte to the HRAM window using the detected offset.
     pub fn write_ram(&self, offset: u16, val: u8) -> Result<()> {
         self.write_reg(self.hram_offset + offset, val)
     }
