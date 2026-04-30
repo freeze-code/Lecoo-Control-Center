@@ -13,6 +13,8 @@ pub use sys_windows::RawPortIo;
 
 mod hw;
 pub use hw::*;
+mod offsets;
+pub use offsets::*;
 
 /// Platform-independent Embedded Controller hardware interface
 pub struct EcDevice {
@@ -22,6 +24,7 @@ pub struct EcDevice {
     io: Mutex<RawPortIo>,
     /// Detected Super I/O base port
     port: u16,
+    pub offsets: EcOffsets,
     pub hram_offset: u16,
 }
 
@@ -31,19 +34,42 @@ impl EcDevice {
         // Initialize the platform-specific low-level I/O
         let io = RawPortIo::new()?;
 
+        let mut offsets = EcOffsets::DEFAULT_N155A;
+        let motherboard = crate::services::get_board_name();
+
+        // Probe for motherboard type
+        if motherboard.contains("N155A") {
+            log::info!("Detected motherboard N155A.");
+        }
+        else if motherboard.contains("N155C") {
+            log::info!("Detected motherboard N155C.");
+        }
+        else if motherboard.contains("N155D") {
+            log::info!("Detected motherboard N155D.");
+            offsets = EcOffsets::DEFAULT_N155D;
+        } else {
+            // todo: check insecure mode
+            // bail!("Unsupported motherboard: {}", motherboard);
+            log::error!("Unsupported motherboard: {}", motherboard);
+            log::error!("Be careful. This will panic in future updates!");
+        }
+
         let mut device = Self {
             io: Mutex::new(io),
             port: 0,
+            offsets,
             hram_offset: 0xFF
         };
 
-        device.detect()?;
+        device.probe_chip()?;
+
         let possible_bases: [u16; 5] = [0xC400, 0xC000, 0x0400, 0x0000, 0xE000];
         for &base in &possible_bases {
-            if let Ok(temp) = device.read_reg(base + hw::RAM_TEMP_CPU) {
+            // A REALLY(!) weak heuristic for detecting HRAM window
+            if let Ok(temp) = device.read_reg(base + device.offsets.ram_temp_cpu) {
                 if temp > 0x10 && temp < 0x50 {
                     device.hram_offset = base;
-                    println!("-----------\nHRAM Window detected by offset: {:#06X}. Temp: {}", base, temp);
+                    log::info!("HRAM Window detected by offset: {:#06X}. Temp: {}", base, temp);
                     break;
                 }
             }
@@ -53,17 +79,20 @@ impl EcDevice {
             bail!("Failed to detect HRAM window base address");
         }
 
+        if device.hram_offset == 0xC400 {
+            log::info!("EC base offset is 0xC400. Adjusting register offsets.");
+            device.offsets.reg_kbd_backlight += 0xC000;
+        }
+
         Ok(device)
     }
 
     /// Probes common Super I/O ports to find the ITE chip.
-    fn detect(&mut self) -> Result<()> {
+    fn probe_chip(&mut self) -> Result<()> {
         let probe_ports = [0x2E, 0x4E, 0x6E];
 
         for &p in &probe_ports {
             self.port = p;
-
-            // TODO: add insecure mode!
 
             if let Ok(chip_id) = self.read_reg(0x2000) {
                 if chip_id == 0x55 {
@@ -77,6 +106,7 @@ impl EcDevice {
             }
         }
 
+        // TODO: add insecure mode!
         bail!("ITE IT5570/IT8987 chip not found on any known port")
     }
 
