@@ -51,11 +51,13 @@ enum Commands {
         profile: Option<CliPowerProfile>,
     },
 
-    /// Set keyboard backlight level (0-3)
+    /// Set keyboard backlight level
     Kbd {
-        #[arg(value_parser = clap::value_parser!(u8).range(0..=3))]
-        level: Option<u8>,
-    },
+            #[arg(value_enum)]
+            mode: Option<CliKbdMode>,
+
+            val: Option<u8>,
+        },
 
     /// Control rear LED ring (e.g., `led auto`, `led custom 255`)
     Led {
@@ -88,6 +90,15 @@ enum CliFanIndex {
 enum CliFanMode {
     Auto,
     Full,
+    Custom,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum CliKbdMode {
+    Off,
+    Low,
+    Medium,
+    High,
     Custom,
 }
 
@@ -223,13 +234,14 @@ fn main() -> anyhow::Result<()> {
             None => IpcRequest::GetChargeLimit,
         },
 
-        Commands::Kbd { level } => match level {
-            Some(l) => {
-                let lvl = match l {
-                    0 => KeyboardBacklightLevel::Off,
-                    1 => KeyboardBacklightLevel::Low,
-                    2 => KeyboardBacklightLevel::Medium,
-                    _ => KeyboardBacklightLevel::High,
+        Commands::Kbd { mode, val } => match mode {
+            Some(m) => {
+                let lvl = match m {
+                    CliKbdMode::Off => KeyboardBacklightLevel::Off,
+                    CliKbdMode::Low => KeyboardBacklightLevel::Low,
+                    CliKbdMode::Medium => KeyboardBacklightLevel::Medium,
+                    CliKbdMode::High => KeyboardBacklightLevel::High,
+                    CliKbdMode::Custom => KeyboardBacklightLevel::Custom(val.unwrap_or(255)),
                 };
                 IpcRequest::SetKeyboardBacklight(lvl)
             }
