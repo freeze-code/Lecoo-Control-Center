@@ -59,6 +59,18 @@ fn process_ipc_connection(mut conn: IpcConnection) {
 fn process_service(rx_in_core: std::sync::mpsc::Receiver<services::InternalEvent>) {
     use ipc::{PowerLedMode, BreathConfig};
     let ec = EC.get().unwrap();
+    let read_and_save_state = |ec: &ec::EcDevice| {
+        if let Ok(mut state) = handlers::get_state() {
+            let _ = ec::read_keyboard_backlight(ec).map(|kbd| state.keyboard_backlight = kbd);
+            let _ = ec::read_power_profile(ec).map(|profile| state.power_profile = profile);
+            let _ = ec::read_charge_limit(ec).map(|(min, max)|
+                state.charge_limit = ChargeLimit::from_predefined(min, max).unwrap_or(ChargeLimit::FullCapacity)
+            );
+            let _ = state.save();
+        } else {
+            log::error!("Incomplete state save on event");
+        }
+    };
 
     loop {
         match rx_in_core.recv() {
@@ -66,16 +78,7 @@ fn process_service(rx_in_core: std::sync::mpsc::Receiver<services::InternalEvent
                 match event {
                     services::InternalEvent::SystemShuttingDown | services::InternalEvent::SystemHibernating => {
                         let _ = ec::apply_led_mode(ec, &PowerLedMode::Auto);
-                        if let Ok(mut state) = handlers::get_state() {
-                            let _ = ec::read_keyboard_backlight(ec).map(|kbd| state.keyboard_backlight = kbd);
-                            let _ = ec::read_power_profile(ec).map(|profile| state.power_profile = profile);
-                            let _ = ec::read_charge_limit(ec).map(|(min, max)|
-                                state.charge_limit = ChargeLimit::from_predefined(min, max).unwrap_or(ChargeLimit::FullCapacity)
-                            );
-                            let _ = state.save();
-                        } else {
-                            log::error!("Incomplete state save on shutdown");
-                        }
+                        read_and_save_state(ec);
                     }
 
                     services::InternalEvent::SystemSleeping => {
@@ -83,6 +86,7 @@ fn process_service(rx_in_core: std::sync::mpsc::Receiver<services::InternalEvent
                             ec,
                             &PowerLedMode::Animation(BreathConfig::sleep()),
                         );
+                        read_and_save_state(ec);
                     }
 
                     services::InternalEvent::SystemWakingUp => {
