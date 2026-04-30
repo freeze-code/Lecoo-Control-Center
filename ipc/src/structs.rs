@@ -46,10 +46,11 @@ impl std::fmt::Display for PowerProfile {
 /// Represents the keyboard backlight brightness levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode)]
 pub enum KeyboardBacklightLevel {
-    Off = 0x00,
-    Low = 0x01,
-    Medium = 0x02,
-    High = 0x03,
+    Off,
+    Low,
+    Medium,
+    High,
+    Custom(u8),
 }
 
 impl std::fmt::Display for KeyboardBacklightLevel {
@@ -59,6 +60,7 @@ impl std::fmt::Display for KeyboardBacklightLevel {
             KeyboardBacklightLevel::Low => write!(f, "Low"),
             KeyboardBacklightLevel::Medium => write!(f, "Medium"),
             KeyboardBacklightLevel::High => write!(f, "High"),
+            KeyboardBacklightLevel::Custom(u) => write!(f, "Custom: {u}/255"),
         }
     }
 }
@@ -337,8 +339,15 @@ impl Default for CurrentSettings {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
-pub enum TelemetryData {
+pub enum TelemetryDataV0 { // todo
     Startup { firmware: String, offset: u16, cpu: String, os: String },
+    Status { profile: PowerProfile, temps: [u32; 2], fans: [u32; 2] },
+    Panic { error: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
+pub enum TelemetryData {
+    Startup { firmware: String, offset: u16, cpu: String, os: String, motherboard: String },
     Status { profile: PowerProfile, temps: [u32; 2], fans: [u32; 2] },
     Panic { error: String },
 }
@@ -346,5 +355,5 @@ pub enum TelemetryData {
 #[derive(Debug, Clone, Encode, Decode)]
 pub struct TelemetryPayload {
     pub id: u64,
-    pub data: TelemetryData,
+    pub data: TelemetryData, // fuck me...
 }
