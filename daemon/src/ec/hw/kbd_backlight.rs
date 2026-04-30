@@ -10,6 +10,11 @@ pub fn read_keyboard_backlight(ec: &EcDevice) -> Result<KeyboardBacklightLevel> 
         0x01 => Ok(KeyboardBacklightLevel::Low),
         0x02 => Ok(KeyboardBacklightLevel::Medium),
         0x03 => Ok(KeyboardBacklightLevel::High),
+        0xFF => {
+            let custom_value = ec.read_reg(0x1806)?;
+            Ok(KeyboardBacklightLevel::Custom(custom_value))
+        }
+
         v => Err(anyhow::anyhow!("Invalid keyboard backlight level: {:#04x}", v)),
     }
 }
@@ -21,6 +26,16 @@ pub fn apply_keyboard_backlight(ec: &EcDevice, level: &KeyboardBacklightLevel) -
         addr += 0xC000
     }
 
-    ec.write_reg(addr, *level as u8)?;
+    match level {
+        KeyboardBacklightLevel::Off => ec.write_reg(addr, 0x00)?,
+        KeyboardBacklightLevel::Low => ec.write_reg(addr, 0x01)?,
+        KeyboardBacklightLevel::Medium => ec.write_reg(addr, 0x02)?,
+        KeyboardBacklightLevel::High => ec.write_reg(addr, 0x03)?,
+        KeyboardBacklightLevel::Custom(v) => {
+            ec.write_reg(addr, 0xFF)?;
+            ec.write_reg(0x1806, *v)?
+        }
+    }
+
     Ok(())
 }
