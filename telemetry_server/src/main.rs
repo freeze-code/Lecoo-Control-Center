@@ -82,6 +82,10 @@ fn main() {
         let db_clone = Arc::clone(&db);
 
         thread::spawn(move || {
+            if request.method() == &Method::Get && request.url() == "/telemetry/health" {
+                let _ = request.respond(Response::empty(200));
+                return;
+            }
             if request.method() != &Method::Post || request.url() != "/telemetry" {
                 let _ = request.respond(Response::empty(404));
                 return;

@@ -129,17 +129,25 @@ fn main() -> Result<()> {
     if std::env::args().collect::<Vec<String>>().contains(&"--service".to_string()) {
         let _service_worker = services::start(tx_to_core);
         let _ = rx_in_core.recv();
-        thread::sleep(std::time::Duration::from_secs(3));
+        thread::sleep(std::time::Duration::from_secs(4));
+    } else {
+        println!("The daemon has been launched in manual mode! Please, run it as a service. Otherwise, it will not work properly.");
+        log::warn!("The daemon has been launched in manual mode! Please, run it as a service. Otherwise, it will not work properly.");
     }
 
     // Linux just start the service
     #[cfg(not(windows))]
     let _service_worker = services::start(tx_to_core);
 
-    let mut server = IpcServer::bind()?;
-    let ec = ec::EcDevice::new()?;
-    let daemon_state = CurrentSettings::load_or_default();
+    let mut server = IpcServer::bind().map_err(|e| {
+        log::error!("Failed to bind IPC server: {}", e); e
+    })?;
 
+    let ec = ec::EcDevice::new().map_err(|e| {
+        log::error!("Failed to initialize EC device: {}", e); e
+    })?;
+
+    let daemon_state = CurrentSettings::load_or_default();
     if let Err(e) = daemon_state.restore_state(&ec) {
         log::error!("Failed to restore EC state: {}", e);
     }
@@ -147,18 +155,22 @@ fn main() -> Result<()> {
     telemetry::init(daemon_state.telemetry_enabled, daemon_state.telemetry_client_id);
 
     if daemon_state.telemetry_enabled {
-        let (cpu_name, os_name) = services::get_system_info();
+        let (cpu_name, os_name, motherboard) = services::get_system_info();
+
         let (chip_id1, chip_id2, chip_ver) = ec::read_system_info(&ec)?;
         telemetry::send(ipc::TelemetryData::Startup {
             firmware: format!("IT{:02X}{:02X}-{:02X}", chip_id1, chip_id2, chip_ver),
             offset: ec.hram_offset,
             cpu: cpu_name,
-            os: os_name
+            os: os_name,
+            motherboard,
         });
     }
 
     let _ = EC.set(ec);
     let _ = STATE.set(Mutex::new(daemon_state));
+    #[cfg(target_os="linux")]
+    println!("Daemon started. For reading logs: \"journalctl -t lecoo-daemon -f\"");
     info!("Daemon started.");
 
     thread::Builder::new()

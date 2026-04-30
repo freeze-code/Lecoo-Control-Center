@@ -102,7 +102,7 @@ impl ChargeLimit {
         }
     }
 
-    pub fn from_predefined(min: u8, max: u8) -> Option<Self> {
+    pub fn from_predefined(min: u8, max: u8) -> Option<Self> { // todo: wait, oh fck this is bad..
         if min > max {
             return None;
         }

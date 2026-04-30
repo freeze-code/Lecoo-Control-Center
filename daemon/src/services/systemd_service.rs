@@ -245,7 +245,6 @@ pub fn get_system_info() -> (String, String, String) {
         .unwrap_or_else(|_| "Unknown Host".to_string());
 
     let board_name = get_board_name();
-    dbg!(get_board_name());
 
     (cpu_name, os_name, format!("{} ({})", host_name, board_name))
 }
