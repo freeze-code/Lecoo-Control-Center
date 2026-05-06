@@ -30,7 +30,7 @@ pub struct EcDevice {
 
 impl EcDevice {
     /// Initializes the EC interface and auto-detects the active port.
-    pub fn new() -> Result<Self> {
+    pub fn new(insecure_mode: bool) -> Result<Self> {
         // Initialize the platform-specific low-level I/O
         let io = RawPortIo::new()?;
 
@@ -47,8 +47,7 @@ impl EcDevice {
         else if motherboard.contains("N155D") {
             log::info!("Detected motherboard N155D.");
             offsets = EcOffsets::DEFAULT_N155D;
-        } else {
-            // todo: check insecure mode
+        } else if !insecure_mode {
             // bail!("Unsupported motherboard: {}", motherboard);
             log::error!("Unsupported motherboard: {}", motherboard);
             log::error!("Be careful. This will panic in future updates!");
@@ -61,7 +60,7 @@ impl EcDevice {
             hram_offset: 0xFF
         };
 
-        device.probe_chip()?;
+        device.probe_chip(insecure_mode)?;
 
         let possible_bases: [u16; 5] = [0xC400, 0xC000, 0x0400, 0x0000, 0xE000];
         for &base in &possible_bases {
@@ -88,7 +87,7 @@ impl EcDevice {
     }
 
     /// Probes common Super I/O ports to find the ITE chip.
-    fn probe_chip(&mut self) -> Result<()> {
+    fn probe_chip(&mut self, insecure_mode: bool) -> Result<()> {
         let probe_ports = [0x2E, 0x4E, 0x6E];
 
         for &p in &probe_ports {
@@ -106,8 +105,13 @@ impl EcDevice {
             }
         }
 
-        // TODO: add insecure mode!
-        bail!("ITE IT5570/IT8987 chip not found on any known port")
+        if insecure_mode {
+            log::warn!("ITE chip not detected on any known port.");
+            log::warn!("INSECURE MODE: Proceeding blindly. Interacting with unknown hardware may cause system instability or damage!");
+            Ok(())
+        } else {
+            bail!("ITE IT5570/IT8987 chip not found on any known port")
+        }
     }
 
     /// Executes a closure safely within a locked Mutex context.

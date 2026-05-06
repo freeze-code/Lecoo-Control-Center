@@ -123,13 +123,14 @@ fn process_service(rx_in_core: std::sync::mpsc::Receiver<services::InternalEvent
 fn main() -> Result<()> {
     services::init_logger();
     let (tx_to_core, rx_in_core) = std::sync::mpsc::channel();
+    let args: Vec<String> = std::env::args().collect();
 
     // Let's give this MicroSLOP piece of the ~~shit~~ OS time to initialize the service
     #[cfg(windows)]
-    if std::env::args().collect::<Vec<String>>().contains(&"--service".to_string()) {
+    if args.iter().any(|arg| arg == "--service") {
         let _service_worker = services::start(tx_to_core);
         let _ = rx_in_core.recv();
-        thread::sleep(std::time::Duration::from_secs(4));
+        thread::sleep(std::time::Duration::from_secs(2));
     } else {
         println!("The daemon has been launched in manual mode! Please, run it as a service. Otherwise, it will not work properly.");
         log::warn!("The daemon has been launched in manual mode! Please, run it as a service. Otherwise, it will not work properly.");
@@ -143,7 +144,8 @@ fn main() -> Result<()> {
         log::error!("Failed to bind IPC server: {}", e); e
     })?;
 
-    let ec = ec::EcDevice::new().map_err(|e| {
+    let insecure_mode = args.iter().any(|arg| arg == "--insecure");
+    let ec = ec::EcDevice::new(insecure_mode).map_err(|e| {
         log::error!("Failed to initialize EC device: {}", e); e
     })?;
 
@@ -169,6 +171,7 @@ fn main() -> Result<()> {
 
     let _ = EC.set(ec);
     let _ = STATE.set(Mutex::new(daemon_state));
+
     #[cfg(target_os="linux")]
     println!("Daemon started. For reading logs: \"journalctl -t lecoo-daemon -f\"");
     info!("Daemon started.");
