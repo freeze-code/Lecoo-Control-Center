@@ -338,13 +338,21 @@ impl Default for CurrentSettings {
     }
 }
 
+// V1: Old format without motherboard field (for backward compatibility)
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
-pub enum TelemetryDataV0 { // todo
+pub enum TelemetryDataV1 {
     Startup { firmware: String, offset: u16, cpu: String, os: String },
     Status { profile: PowerProfile, temps: [u32; 2], fans: [u32; 2] },
     Panic { error: String },
 }
 
+#[derive(Debug, Clone, Encode, Decode)]
+pub struct TelemetryPayloadV1 {
+    pub id: u64,
+    pub data: TelemetryDataV1,
+}
+
+// V2: Current format with motherboard field
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
 pub enum TelemetryData {
     Startup { firmware: String, offset: u16, cpu: String, os: String, motherboard: String },
