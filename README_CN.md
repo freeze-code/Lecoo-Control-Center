@@ -46,6 +46,28 @@ CN [中文 Readme 在这](README_RU.md)
 
 如果您成功在未列出的硬件版本或不同的Emdoor底盘上运行此软件，请打开一个issue或联系我以更新兼容性列表！
 
+## 安装
+
+### ⚠️ 推荐：使用预编译二进制文件
+
+**除非您是开发人员，否则请勿从源代码构建！** 请下载最新的预编译版本：
+
+👉 **[下载最新版本](https://github.com/LaVashikk/Lecoo-Control-Center/releases/latest)**
+
+#### Windows 安装
+
+1. 从发布页面下载 `lecoo-*-windows.zip` 压缩包。
+2. 将压缩包解压到任意文件夹。
+3. 右键点击 `install.bat` 并选择 **"以管理员身份运行"**。
+4. 打开新的终端窗口并运行 `lecoo-ctrl help` 以验证安装。
+
+#### Linux 安装
+
+1. 从发布页面下载 `lecoo-*-linux.tar.gz` 压缩包。
+2. 解压压缩包：`tar -xzf lecoo-*-linux.tar.gz`
+3. 进入解压后的文件夹并运行：`sudo ./install.sh`
+4. 使用 `lecoo-ctrl` 命令与守护进程交互。
+
 ## 已知问题
 
 * **Windows 11守护进程自动启动：** 后台守护进程目前在Windows 11上无法自动启动。根本原因仍在调查中。
@@ -53,6 +75,8 @@ CN [中文 Readme 在这](README_RU.md)
 * **自定义LED模式下的充电指示器：** 当后部LED环设置为`custom`模式时，标准电池充电指示器停止工作。
 * **硬关机后LED环保持开启：** 如果在后部LED环处于`custom`模式时执行硬关机（按住电源按钮），环将保持点亮。**解决方法：** 打开笔记本电脑并正常关机。
 * **与官方软件的冲突：** 使用`power`命令调整TDP配置文件可能与制造商的官方软件（`PowerModeUtility`）冲突。强烈建议一次只使用这些工具中的一个。
+* **反作弊软件 (Windows)：** 某些反作弊系统（如 FaceIT）可能会终止守护进程。这是因为守护进程利用官方制造商驱动程序来访问嵌入式控制器。
+* **Secure Boot 与内核锁定 (Linux)：** 在启用 Secure Boot 的发行版（如 Fedora）上，由于内核锁定策略，守护进程目前无法访问底层 I/O 端口（`/dev/port`）。此限制将在以后的更新中解决。
 
 ## 使用方法（CLI）
 
@@ -115,7 +139,7 @@ CN [中文 Readme 在这](README_RU.md)
 lecoo-ctrl daemon telemetry disable
 ```
 
-## 从源码构建
+## 从源码构建（开发人员）
 
 确保您已安装Rust工具链。
 
